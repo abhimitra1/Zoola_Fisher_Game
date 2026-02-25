@@ -1,0 +1,48 @@
+const express = require("express");
+const cors = require("cors");
+const helmet = require("helmet");
+const dotenv = require("dotenv");
+const { connectDB } = require("./config/db");
+const { startTickWorker } = require("./workers/tickWorker");
+const authRoutes = require("./routes/auth");
+const gameRoutes = require("./routes/game");
+const economyRoutes = require("./routes/economy");
+
+// Load environment variables
+dotenv.config();
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// ── Middleware ──────────────────────────────────────
+app.use(helmet());
+app.use(cors());
+app.use(express.json());
+// ── Routes ──────────────────────────────────────────
+app.use("/api/v1/auth", authRoutes);
+app.use("/api/v1/game", gameRoutes);
+app.use("/api/v1/economy", economyRoutes);
+// ── Health Check ────────────────────────────────────
+app.get("/health", (req, res) => {
+  res.json({
+    status: "ok",
+    project: "Fisher: Guardians of the Blue Tank",
+    version: "1.0.0",
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// ── Start Server ────────────────────────────────────
+async function startServer() {
+  await connectDB();
+  app.listen(PORT, () => {
+    startTickWorker();
+    console.log(`🐟 Fisher Backend running on port ${PORT}`);
+    console.log(`🌊 Environment: ${process.env.NODE_ENV}`);
+    console.log(`✅ Health check: http://localhost:${PORT}/health`);
+  });
+}
+
+startServer();
+
+module.exports = app;

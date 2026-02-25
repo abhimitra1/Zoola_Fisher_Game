@@ -1,0 +1,137 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String    @id @default(uuid())
+  email           String?   @unique
+  guestToken      String?   @unique @map("guest_token")
+  displayName     String?   @map("display_name")
+  custodialWallet String?   @map("custodial_wallet")
+  playerLevel     Int       @default(2) @map("player_level")
+  totalXp         Int       @default(0) @map("total_xp")
+  coins           Int       @default(100)
+  pearls          Int       @default(0)
+  essence         Int       @default(0)
+  zoolaBalance    Decimal   @default(0) @map("zoola_balance")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  lastLogin       DateTime? @map("last_login")
+
+  tanks           Tank[]
+  fish            Fish[]
+  inventory       Inventory[]
+  sessions        Session[]
+  txQueue         TxQueue[]
+  analyticsEvents AnalyticsEvent[]
+
+  @@map("users")
+}
+
+model Tank {
+  id            String   @id @default(uuid())
+  userId        String   @map("user_id")
+  tankName      String?  @map("tank_name")
+  tankType      String   @default("basic") @map("tank_type")
+  oxygenLevel   Int      @default(70) @map("oxygen_level")
+  cleanliness   Int      @default(100)
+  size          Int      @default(1)
+  themeSkin     String?  @map("theme_skin")
+  frameCosmetic String?  @map("frame_cosmetic")
+  lastDirtTick  DateTime @default(now()) @map("last_dirt_tick")
+  lastO2Tick    DateTime @default(now()) @map("last_o2_tick")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  user User   @relation(fields: [userId], references: [id])
+  fish Fish[]
+
+  @@map("tanks")
+}
+
+model Fish {
+  id             String    @id @default(uuid())
+  tankId         String    @map("tank_id")
+  userId         String    @map("user_id")
+  species        String
+  rarity         String
+  hunger         Int       @default(80)
+  health         Int       @default(100)
+  growthProgress Int       @default(0) @map("growth_progress")
+  growthStage    String    @default("egg") @map("growth_stage")
+  mood           Int       @default(80)
+  hatchedAt      DateTime? @map("hatched_at")
+  maturedAt      DateTime? @map("matured_at")
+  sellValue      Int?      @map("sell_value")
+  trait          String?
+  lastFed        DateTime? @map("last_fed")
+  alive          Boolean   @default(true)
+
+  tank Tank @relation(fields: [tankId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("fish")
+}
+
+model Inventory {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  itemType    String   @map("item_type")
+  itemId      String   @map("item_id")
+  quantity    Int      @default(1)
+  nftTokenId  String?  @map("nft_token_id")
+  nftContract String?  @map("nft_contract")
+  isEquipped  Boolean  @default(false) @map("is_equipped")
+  acquiredAt  DateTime @default(now()) @map("acquired_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("inventory")
+}
+
+model TxQueue {
+  id             String    @id @default(uuid())
+  userId         String    @map("user_id")
+  action         String
+  payload        Json
+  status         String    @default("pending")
+  txHash         String?   @map("tx_hash")
+  attempts       Int       @default(0)
+  idempotencyKey String    @unique @map("idempotency_key")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  confirmedAt    DateTime? @map("confirmed_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("tx_queue")
+}
+
+model Session {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  token      String   @unique
+  deviceInfo Json?    @map("device_info")
+  expiresAt  DateTime @map("expires_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("sessions")
+}
+
+model AnalyticsEvent {
+  id            String   @id @default(uuid())
+  userId        String   @map("user_id")
+  eventName     String   @map("event_name")
+  properties    Json?
+  clientVersion String?  @map("client_version")
+  sessionId     String?  @map("session_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("analytics_events")
+}
