@@ -5,6 +5,7 @@
 // Dirt: +1 every 15 seconds = +4 per minute
 // Oxygen: -2 per minute (natural decay)
 
+const { sendToUser } = require("../config/socket");
 const { prisma } = require("../config/db");
 const GrowthEngine = require("../engines/GrowthEngine");
 const CleanEngine = require("../engines/CleanEngine");
@@ -65,6 +66,13 @@ async function runTick() {
             where: { id: fish.userId },
             data: { coins: { increment: 1 } },
           });
+
+          // Push coin update to Unity via WebSocket
+          sendToUser(fish.userId, "coins_updated", {
+            message: `${fish.species} produced a coin!`,
+            fishId: fish.id,
+          });
+
           continue;
         }
 
@@ -82,8 +90,15 @@ async function runTick() {
         if (GrowthEngine.shouldAdvanceStage(newProgress)) {
           newStage = GrowthEngine.getNextStage(fish.growthStage);
           newProgressFinal = 0; // reset progress for next stage
-
           console.log(`🐟 Fish ${fish.species} advanced to ${newStage}!`);
+
+          // Push growth update to Unity via WebSocket
+          sendToUser(fish.userId, "fish_grew", {
+            fishId: fish.id,
+            species: fish.species,
+            newStage,
+            message: `Your ${fish.species} grew to ${newStage}!`,
+          });
         }
 
         // Calculate sell value if just became adult

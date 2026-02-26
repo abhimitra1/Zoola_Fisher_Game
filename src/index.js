@@ -1,3 +1,4 @@
+const errorHandler = require("./middleware/errorHandler");
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
@@ -7,6 +8,14 @@ const { startTickWorker } = require("./workers/tickWorker");
 const authRoutes = require("./routes/auth");
 const gameRoutes = require("./routes/game");
 const economyRoutes = require("./routes/economy");
+const { initSocket } = require("./config/socket");
+const http = require("http");
+
+const {
+  generalLimiter,
+  authLimiter,
+  gameLimiter,
+} = require("./middleware/rateLimit");
 
 // Load environment variables
 dotenv.config();
@@ -18,10 +27,16 @@ const PORT = process.env.PORT || 3000;
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
+// ── Rate Limiters ────────────────────────────────────
+app.use("/api/v1/auth", authLimiter);
+app.use("/api/v1/game", gameLimiter);
+app.use("/api/v1", generalLimiter);
 // ── Routes ──────────────────────────────────────────
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/game", gameRoutes);
 app.use("/api/v1/economy", economyRoutes);
+// ── Global Error Handler ─────────────────────────────
+app.use(errorHandler);
 // ── Health Check ────────────────────────────────────
 app.get("/health", (req, res) => {
   res.json({
@@ -35,8 +50,10 @@ app.get("/health", (req, res) => {
 // ── Start Server ────────────────────────────────────
 async function startServer() {
   await connectDB();
-  app.listen(PORT, () => {
-    startTickWorker();
+  const server = http.createServer(app);
+  initSocket(server);
+
+  server.listen(PORT, () => {
     console.log(`🐟 Fisher Backend running on port ${PORT}`);
     console.log(`🌊 Environment: ${process.env.NODE_ENV}`);
     console.log(`✅ Health check: http://localhost:${PORT}/health`);

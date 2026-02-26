@@ -1,3 +1,4 @@
+const { sendToUser } = require("../config/socket");
 const express = require("express");
 const { prisma } = require("../config/db");
 const authMiddleware = require("../middleware/auth");
@@ -314,8 +315,16 @@ router.get("/kingfisher/status", async (req, res) => {
     const warning = KingfisherEngine.getWarningMessage(probability);
     const willAttack = KingfisherEngine.shouldAttack(probability);
 
-    // If attack triggers, send attack event
+    // If attack triggers, push real-time alert to Unity
     if (willAttack && tank.fish.length > 0) {
+      // Push via WebSocket instantly
+      sendToUser(userId, "kingfisher_attack", {
+        tankId,
+        message: "ATTACK! Tap Repel now!",
+        probability,
+        timestamp: new Date().toISOString(),
+      });
+
       return res.json({
         success: true,
         attacking: true,
