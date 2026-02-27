@@ -12,6 +12,7 @@ model User {
   email           String?   @unique
   guestToken      String?   @unique @map("guest_token")
   displayName     String?   @map("display_name")
+  password        String?   @map("password")
   custodialWallet String?   @map("custodial_wallet")
   playerLevel     Int       @default(2) @map("player_level")
   totalXp         Int       @default(0) @map("total_xp")
@@ -134,4 +135,15 @@ model AnalyticsEvent {
   user User @relation(fields: [userId], references: [id])
 
   @@map("analytics_events")
+}
+
+model OtpCode {
+  id        String   @id @default(uuid())
+  email     String
+  code      String
+  expiresAt DateTime @map("expires_at")
+  verified  Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("otp_codes")
 }

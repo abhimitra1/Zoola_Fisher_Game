@@ -1,7 +1,9 @@
 const express = require("express");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
+const bcrypt = require("bcryptjs");
 const { prisma } = require("../config/db");
+const { sendOTP, verifyOTP } = require("../utils/otp");
 
 const router = express.Router();
 
@@ -10,14 +12,17 @@ function generateToken(userId) {
   return jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: "7d" });
 }
 
+// ── Helper: Validate email format ────────────────────
+function isValidEmail(email) {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+}
+
 // ── POST /auth/guest ─────────────────────────────────
-// Creates a guest account instantly, no email needed
 router.post("/guest", async (req, res) => {
   try {
-    // Generate unique guest token
     const guestToken = crypto.randomBytes(32).toString("hex");
 
-    // Create user in database
     const user = await prisma.user.create({
       data: {
         guestToken,
@@ -28,19 +33,16 @@ router.post("/guest", async (req, res) => {
       },
     });
 
-    // Generate JWT
     const token = generateToken(user.id);
 
-    // Create session
     await prisma.session.create({
       data: {
         userId: user.id,
         token,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       },
     });
 
-    // Track analytics
     await prisma.analyticsEvent.create({
       data: {
         userId: user.id,
@@ -71,11 +73,12 @@ router.post("/guest", async (req, res) => {
 });
 
 // ── POST /auth/register ──────────────────────────────
-// Register with email
+// Register with email + password
 router.post("/register", async (req, res) => {
   try {
-    const { email, displayName } = req.body;
+    const { email, password, confirmPassword, displayName } = req.body;
 
+    // ── Validate email format ────────────────────────
     if (!email) {
       return res.status(400).json({
         success: false,
@@ -83,7 +86,37 @@ router.post("/register", async (req, res) => {
       });
     }
 
-    // Check if email already exists
+    if (!isValidEmail(email)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid email format",
+      });
+    }
+
+    // ── Validate password ────────────────────────────
+    if (!password) {
+      return res.status(400).json({
+        success: false,
+        error: "Password is required",
+      });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        error: "Password must be at least 6 characters",
+      });
+    }
+
+    // ── Check passwords match ────────────────────────
+    if (password !== confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        error: "Passwords do not match",
+      });
+    }
+
+    // ── Check email already exists ───────────────────
     const existing = await prisma.user.findUnique({
       where: { email },
     });
@@ -95,10 +128,14 @@ router.post("/register", async (req, res) => {
       });
     }
 
-    // Create user
+    // ── Hash password ────────────────────────────────
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // ── Create user ──────────────────────────────────
     const user = await prisma.user.create({
       data: {
         email,
+        password: hashedPassword,
         displayName: displayName || "Fisher Guardian",
         coins: 100,
         pearls: 0,
@@ -106,10 +143,8 @@ router.post("/register", async (req, res) => {
       },
     });
 
-    // Generate JWT
     const token = generateToken(user.id);
 
-    // Create session
     await prisma.session.create({
       data: {
         userId: user.id,
@@ -118,7 +153,6 @@ router.post("/register", async (req, res) => {
       },
     });
 
-    // Track analytics
     await prisma.analyticsEvent.create({
       data: {
         userId: user.id,
@@ -150,19 +184,27 @@ router.post("/register", async (req, res) => {
 });
 
 // ── POST /auth/login ─────────────────────────────────
-// Login with email
+// Login with email + password
 router.post("/login", async (req, res) => {
   try {
-    const { email } = req.body;
+    const { email, password } = req.body;
 
-    if (!email) {
+    // ── Validate inputs ──────────────────────────────
+    if (!email || !password) {
       return res.status(400).json({
         success: false,
-        error: "Email is required",
+        error: "Email and password are required",
       });
     }
 
-    // Find user
+    if (!isValidEmail(email)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid email format",
+      });
+    }
+
+    // ── Find user ────────────────────────────────────
     const user = await prisma.user.findUnique({
       where: { email },
     });
@@ -170,20 +212,37 @@ router.post("/login", async (req, res) => {
     if (!user) {
       return res.status(404).json({
         success: false,
-        error: "User not found",
+        error: "Email not found",
       });
     }
 
-    // Generate new token
+    // ── Check password ───────────────────────────────
+    if (!user.password) {
+      return res.status(400).json({
+        success: false,
+        error: "This account uses a different login method",
+      });
+    }
+
+    const passwordMatch = await bcrypt.compare(password, user.password);
+
+    if (!passwordMatch) {
+      return res.status(401).json({
+        success: false,
+        error: "Wrong password",
+      });
+    }
+
+    // ── Generate token ───────────────────────────────
     const token = generateToken(user.id);
 
-    // Update last login
+    // ── Update last login ────────────────────────────
     await prisma.user.update({
       where: { id: user.id },
       data: { lastLogin: new Date() },
     });
 
-    // Create new session
+    // ── Create session ───────────────────────────────
     await prisma.session.create({
       data: {
         userId: user.id,
@@ -213,4 +272,80 @@ router.post("/login", async (req, res) => {
   }
 });
 
+// ── POST /auth/send-otp ──────────────────────────────
+// Send OTP to email for verification
+router.post("/send-otp", async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        error: "Email is required",
+      });
+    }
+
+    if (!isValidEmail(email)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid email format",
+      });
+    }
+
+    const result = await sendOTP(email);
+
+    if (!result.success) {
+      return res.status(500).json({
+        success: false,
+        error: "Failed to send OTP",
+      });
+    }
+
+    res.json({
+      success: true,
+      message: `OTP sent to ${email} — expires in 10 minutes`,
+    });
+  } catch (error) {
+    console.error("Send OTP error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to send OTP",
+    });
+  }
+});
+
+// ── POST /auth/verify-otp ────────────────────────────
+// Verify OTP and complete registration
+router.post("/verify-otp", async (req, res) => {
+  try {
+    const { email, code } = req.body;
+
+    if (!email || !code) {
+      return res.status(400).json({
+        success: false,
+        error: "Email and code are required",
+      });
+    }
+
+    const result = await verifyOTP(email, code);
+
+    if (!result.success) {
+      return res.status(400).json({
+        success: false,
+        error: result.error,
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Email verified successfully!",
+    });
+  } catch (error) {
+    console.error("Verify OTP error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to verify OTP",
+    });
+  }
+});
 module.exports = router;

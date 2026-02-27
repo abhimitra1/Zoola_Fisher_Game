@@ -8,6 +8,7 @@ const { startTickWorker } = require("./workers/tickWorker");
 const authRoutes = require("./routes/auth");
 const gameRoutes = require("./routes/game");
 const economyRoutes = require("./routes/economy");
+const cosmeticsRoutes = require("./routes/cosmetics");
 const { initSocket } = require("./config/socket");
 const http = require("http");
 
@@ -35,6 +36,7 @@ app.use("/api/v1", generalLimiter);
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/game", gameRoutes);
 app.use("/api/v1/economy", economyRoutes);
+app.use("/api/v1/cosmetics", cosmeticsRoutes);
 // ── Global Error Handler ─────────────────────────────
 app.use(errorHandler);
 // ── Health Check ────────────────────────────────────
