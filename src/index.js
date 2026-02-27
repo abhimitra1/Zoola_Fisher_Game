@@ -52,9 +52,9 @@ app.get("/health", (req, res) => {
 // ── Start Server ────────────────────────────────────
 async function startServer() {
   await connectDB();
+  startTickWorker();
   const server = http.createServer(app);
   initSocket(server);
-
   server.listen(PORT, () => {
     console.log(`🐟 Fisher Backend running on port ${PORT}`);
     console.log(`🌊 Environment: ${process.env.NODE_ENV}`);
