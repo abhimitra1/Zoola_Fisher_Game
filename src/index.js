@@ -11,6 +11,9 @@ const economyRoutes = require("./routes/economy");
 const cosmeticsRoutes = require("./routes/cosmetics");
 const { initSocket } = require("./config/socket");
 const http = require("http");
+const shopRoutes = require("./routes/shop");
+const profileRoutes = require("./routes/profile");
+const fishRoutes = require("./routes/fish");
 
 const {
   generalLimiter,
@@ -37,6 +40,9 @@ app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/game", gameRoutes);
 app.use("/api/v1/economy", economyRoutes);
 app.use("/api/v1/cosmetics", cosmeticsRoutes);
+app.use("/api/v1/shop", shopRoutes);
+app.use("/api/v1/user", profileRoutes);
+app.use("/api/v1/fish", fishRoutes);
 // ── Global Error Handler ─────────────────────────────
 app.use(errorHandler);
 // ── Health Check ────────────────────────────────────

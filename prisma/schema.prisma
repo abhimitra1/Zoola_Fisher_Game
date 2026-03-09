@@ -22,6 +22,8 @@ model User {
   zoolaBalance    Decimal   @default(0) @map("zoola_balance")
   createdAt       DateTime  @default(now()) @map("created_at")
   lastLogin       DateTime? @map("last_login")
+  loginStreak     Int?      @default(0) @map("login_streak")
+  lastDailyLogin  DateTime? @map("last_daily_login")
 
   tanks           Tank[]
   fish            Fish[]
@@ -69,7 +71,7 @@ model Fish {
   sellValue      Int?      @map("sell_value")
   trait          String?
   lastFed        DateTime? @map("last_fed")
-  alive          Boolean   @default(true)
+  status         String    @default("in_tank") @map("status")
 
   tank Tank @relation(fields: [tankId], references: [id])
   user User @relation(fields: [userId], references: [id])

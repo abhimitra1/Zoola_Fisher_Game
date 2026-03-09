@@ -34,8 +34,10 @@ function shouldAttack(probability) {
 }
 
 function selectFishToSteal(fish) {
-  // Kingfisher steals a random alive adult fish
-  const adults = fish.filter((f) => f.alive && f.growthStage === "adult");
+  // Kingfisher steals a random active adult fish
+  const adults = fish.filter(
+    (f) => f.status === "in_tank" && f.growthStage === "adult",
+  );
 
   if (adults.length === 0) return null;
 

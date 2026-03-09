@@ -21,7 +21,7 @@ async function runTick() {
     // Get all tanks
     const tanks = await prisma.tank.findMany({
       include: {
-        fish: { where: { alive: true } },
+        fish: { where: { status: "in_tank" } },
       },
     });
 
