@@ -1,0 +1,5 @@
+[
+  { "id": "upg_oxygen_pump", "name": "Oxygen Pump", "cost": 30, "description": "Slows oxygen decay by 50%" },
+  { "id": "upg_filter", "name": "Tank Filter", "cost": 40, "description": "Improves cleanliness recovery and reduces decay" },
+  { "id": "upg_feed_quality", "name": "Premium Feed", "cost": 25, "description": "Feeds restore more hunger and increase fish growth" }
+]
