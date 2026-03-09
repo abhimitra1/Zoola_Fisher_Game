@@ -33,7 +33,7 @@ router.get("/collection", async (req, res) => {
 
     const allFish = await prisma.fish.findMany({
       where: { userId },
-      orderBy: { createdAt: "desc" },
+      orderBy: { id: "desc" },
     });
 
     // Group by status
@@ -59,7 +59,6 @@ router.get("/collection", async (req, res) => {
         sellValue: SELL_VALUES[f.rarity] || 10,
         canSell: f.growthStage === "adult" && f.status === "in_tank",
         canMove: f.status === "in_tank" || f.status === "reserve",
-        createdAt: f.createdAt,
         hatchedAt: f.hatchedAt,
       }));
 

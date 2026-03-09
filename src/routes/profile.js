@@ -49,7 +49,9 @@ router.get("/profile", async (req, res) => {
 
     // Fish stats
     const allFish = await prisma.fish.findMany({ where: { userId } });
-    const aliveFish = allFish.filter((f) => f.alive);
+    const aliveFish = allFish.filter(
+      (f) => f.status === "in_tank" || f.status === "reserve",
+    );
     const adultFish = aliveFish.filter((f) => f.growthStage === "adult");
     const totalSold = allFish.filter((f) => !f.alive).length;
 

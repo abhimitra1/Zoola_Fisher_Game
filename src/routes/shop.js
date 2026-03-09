@@ -270,7 +270,7 @@ router.get("/fish-list", async (req, res) => {
 
     // Get all ALIVE fish in this tank
     const fish = await prisma.fish.findMany({
-      where: { tankId, userId, alive: true },
+      where: { tankId, userId, status: "in_tank" },
       orderBy: { createdAt: "asc" },
     });
 
@@ -405,7 +405,7 @@ router.post("/purchase", async (req, res) => {
           .json({ success: false, error: "Tank not found" });
 
       const fishCount = await prisma.fish.count({
-        where: { tankId, userId, alive: true },
+        where: { tankId, userId, status: "in_tank" },
       });
       const maxFish = 5 + ((tank.size || 1) - 1) * 2;
       if (fishCount >= maxFish) {
@@ -414,12 +414,10 @@ router.post("/purchase", async (req, res) => {
           where: { id: userId },
           data: { [item.currency === "coins" ? "coins" : "pearls"]: balance },
         });
-        return res
-          .status(400)
-          .json({
-            success: false,
-            error: `Tank full! Max ${maxFish} fish. Upgrade tank to add more.`,
-          });
+        return res.status(400).json({
+          success: false,
+          error: `Tank full! Max ${maxFish} fish. Upgrade tank to add more.`,
+        });
       }
 
       const catalogue = FISH_CATALOGUE[item.species];
@@ -434,7 +432,7 @@ router.post("/purchase", async (req, res) => {
           hunger: 50,
           health: 100,
           mood: 80,
-          alive: true,
+          status: "in_tank",
         },
       });
 
@@ -452,15 +450,13 @@ router.post("/purchase", async (req, res) => {
       // ── MEDICINE PURCHASE ───────────────────────────────────────────
     } else if (item.category === "medicine") {
       if (!fishId)
-        return res
-          .status(400)
-          .json({
-            success: false,
-            error: "fishId required for medicine purchase",
-          });
+        return res.status(400).json({
+          success: false,
+          error: "fishId required for medicine purchase",
+        });
 
       const fish = await prisma.fish.findFirst({
-        where: { id: fishId, userId, alive: true },
+        where: { id: fishId, userId, status: "in_tank" },
       });
       if (!fish)
         return res
@@ -485,25 +481,22 @@ router.post("/purchase", async (req, res) => {
       // ── DECORATION PURCHASE ─────────────────────────────────────────
     } else if (item.category === "decoration") {
       if (!tankId)
-        return res
-          .status(400)
-          .json({
-            success: false,
-            error: "tankId required for decoration purchase",
-          });
+        return res.status(400).json({
+          success: false,
+          error: "tankId required for decoration purchase",
+        });
 
       await prisma.inventory.create({
         data: {
           userId,
           itemType: "decoration",
           itemId: item.id,
-          metadata: JSON.stringify({ name: item.name, equippedTankId: tankId }),
         },
       });
 
       // Boost fish mood in tank
       await prisma.fish.updateMany({
-        where: { tankId, userId, alive: true },
+        where: { tankId, userId, status: "in_tank" },
         data: { mood: { increment: 5 } },
       });
 
@@ -545,12 +538,7 @@ router.post("/purchase", async (req, res) => {
 
       await prisma.tank.update({ where: { id: tankId }, data: updateData });
       await prisma.inventory.create({
-        data: {
-          userId,
-          itemType: "upgrade",
-          itemId: item.id,
-          metadata: JSON.stringify({ tankId }),
-        },
+        data: { userId, itemType: "upgrade", itemId: item.id },
       });
 
       result = {
