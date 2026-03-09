@@ -88,7 +88,7 @@ router.get("/tank/:id", async (req, res) => {
       },
       include: {
         fish: {
-          where: { alive: true },
+          where: { status: "in_tank" },
         },
       },
     });
@@ -215,7 +215,7 @@ router.post("/feed", async (req, res) => {
 
     // Get fish
     const fish = await prisma.fish.findFirst({
-      where: { id: fishId, tankId, userId, alive: true },
+      where: { id: fishId, tankId, userId, status: "in_tank" },
     });
 
     if (!fish) {
@@ -296,7 +296,7 @@ router.get("/kingfisher/status", async (req, res) => {
     // Get tank with fish
     const tank = await prisma.tank.findFirst({
       where: { id: tankId, userId },
-      include: { fish: { where: { alive: true } } },
+      include: { fish: { where: { status: "in_tank" } } },
     });
 
     if (!tank) {
@@ -366,7 +366,7 @@ router.post("/repel-kingfisher", async (req, res) => {
     // Get tank with fish
     const tank = await prisma.tank.findFirst({
       where: { id: tankId, userId },
-      include: { fish: { where: { alive: true } } },
+      include: { fish: { where: { status: "in_tank" } } },
     });
 
     if (!tank) {
@@ -401,7 +401,7 @@ router.post("/repel-kingfisher", async (req, res) => {
       // Mark fish as not alive
       await prisma.fish.update({
         where: { id: stolenFish.id },
-        data: { alive: false },
+        data: { status: "dead" },
       });
 
       await prisma.analyticsEvent.create({

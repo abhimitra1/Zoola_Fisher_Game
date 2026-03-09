@@ -69,7 +69,7 @@ router.post("/sell-fish", async (req, res) => {
 
     // Get fish
     const fish = await prisma.fish.findFirst({
-      where: { id: fishId, userId, alive: true },
+      where: { id: fishId, userId, status: "in_tank" },
     });
 
     if (!fish) {
@@ -92,10 +92,10 @@ router.post("/sell-fish", async (req, res) => {
       fish.sellValue ||
       GrowthEngine.calculateSellValue(fish.species, fish.rarity);
 
-    // Mark fish as sold (not alive)
+    // Mark fish as sold
     await prisma.fish.update({
       where: { id: fishId },
-      data: { alive: false },
+      data: { status: "sold" },
     });
 
     // Add coins to user
